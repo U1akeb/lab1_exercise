@@ -1,150 +1,96 @@
-# Lab 1 Exercise: Program diffdrive_bot
+# Lab 1: diffdrive_bot
 
-**Student:** Bekalu (ulakeb)  
-**Program:** BSc in Software Engineering, Addis Ababa University  
-**Course:** Introduction to Robotics and Intelligent Systems (Academic Year 2026)  
-**Lecturer / Lab Assistant:** Mohammed Sraj (MSc AI)  
+**Name:** Bekalu  
+**Course:** Introduction to Robotics and Intelligent Systems  
 
 ---
 
-## Overview
+## What is in this folder
+This repository has 4 packages for Lab 1:
+- `diffdrive_bot`: the robot model with the new depth camera and IMU.
+- `lab_interfaces`: base message and action types.
+- `my_robot_interfaces`: my custom msg, srv, and action files.
+- `my_robot_nodes`: my python scripts to drive the robot.
 
-This repository contains the complete solution for **Lab 1: ROS 2 and Custom Robot Simulation**. It contains four packages designed to build standalone in the `src/` directory of any ROS 2 workspace:
+---
 
-| Package | Build Type | Description |
-|---|---|---|
-| `diffdrive_bot` | `ament_cmake` | Modified robot URDF with added rear depth camera and IMU, Gazebo obstacle world, and simulation launch files. |
-| `lab_interfaces` | `ament_cmake` | Base interfaces (`ObstacleInfo.msg`, `SetSpeed.srv`, `DriveDistance.action`). |
-| `my_robot_interfaces` | `ament_cmake` | Custom interfaces developed for this exercise (`RobotStatus.msg`, `SetTurnSpeed.srv`, `Rotate.action`). |
-| `my_robot_nodes` | `ament_python` | Python nodes and launch files (`turn_away`, `rotate_server`, `square_driver`, and `square.launch.py`). |
+## How to build
+Open a terminal, source ROS 2, and build:
+
+```bash
+source /opt/ros/jazzy/setup.bash
+cd ~/ros2_ws
+colcon build --symlink-install
+source install/setup.bash
+```
 
 ---
 
 ## Screenshots
 
-### 1. Step 1: RViz Depth Camera & PointCloud2 Display
-Real simulation capture showing `/depth_camera/image` and `/depth_camera/points` with the rear depth camera visualizing the wall behind the robot:
+### 1. Step 1 - RViz Depth Camera and Point Cloud
+RViz showing the wall behind the robot with the new depth camera:
 
-![RViz Depth Camera Display](screenshots/rviz_depth_camera.png)
+![RViz Screenshot](screenshots/rviz_depth_camera.png)
 
----
+### 2. Step 7 - rqt_graph during square.launch.py
+The rqt_graph showing all active nodes while the robot drives in a square:
 
-### 2. Step 7: Computation Graph (`rqt_graph`) during `square.launch.py`
-Real execution capture showing active ROS 2 nodes, topics, services, and action client/server connections while the robot executes the autonomous square driving trajectory:
-
-![rqt_graph during square.launch.py](screenshots/rqt_graph_square.png)
+![rqt_graph Screenshot](screenshots/rqt_graph_square.png)
 
 ---
 
-## Building the Workspace
+## How to run each step
 
-1. Ensure the ROS 2 environment is sourced (make sure active conda environments are deactivated):
-   ```bash
-   conda deactivate
-   source /opt/ros/jazzy/setup.bash
-   ```
+### Step 1: Depth camera and IMU
+Start the robot in simulation:
+```bash
+ros2 launch diffdrive_bot gazebo.launch.py
+```
+Check the IMU:
+```bash
+ros2 topic hz /imu
+```
 
-2. From your workspace root (e.g., `~/ros2_ws`):
-   ```bash
-   cd ~/ros2_ws
-   colcon build --symlink-install
-   source install/setup.bash
-   ```
+### Steps 2 to 5: Obstacle avoidance (`turn_away`)
+In terminal 1, start the robot:
+```bash
+ros2 launch diffdrive_bot control.launch.py
+```
+In terminal 2, run the node:
+```bash
+ros2 run my_robot_nodes turn_away
+```
+In terminal 3, turn it on or change speed:
+```bash
+ros2 service call /turn_away_enable std_srvs/srv/SetBool "{data: true}"
+ros2 service call /set_turn_speed my_robot_interfaces/srv/SetTurnSpeed "{turn_speed: 0.8}"
+ros2 param set /turn_away forward_speed 0.3
+ros2 service call /turn_away_enable std_srvs/srv/SetBool "{data: false}"
+```
 
----
+### Step 6: Rotate action server
+In terminal 2, start the server:
+```bash
+ros2 run my_robot_nodes rotate_server
+```
+In terminal 3, send a goal to turn 90 degrees (1.57 rad):
+```bash
+ros2 action send_goal --feedback /rotate my_robot_interfaces/action/Rotate "{angle: 1.57}"
+```
 
-## Step-by-Step Instructions & Verification
-
-### Step 1: Depth Camera and IMU
-- **What was added:**
-  - `depth_camera_link` positioned at the rear of `base_link` (`-0.215 m`, rotated $\pi$ rad about $Z$).
-  - `imu_link` centered at `base_link` (`0 0 0`).
-  - Gazebo sensor plugins for depth camera (10 Hz, 320x240, `R_FLOAT32`) and IMU (50 Hz).
-  - ROS-Gazebo bridge configured in `config/bridge.yaml`.
-- **Verification:**
-  1. Check transform coordinates:
-     ```bash
-     ros2 run tf2_ros tf2_echo base_link depth_camera_link
-     ```
-     *Output shows translation `[-0.215, 0, 0]` and rotation half a turn.*
-  2. Launch simulation and RViz:
-     ```bash
-     ros2 launch diffdrive_bot gazebo.launch.py
-     ```
-  3. Verify IMU frequency:
-     ```bash
-     ros2 topic hz /imu
-     # Output: ~50 Hz
-     ```
-
----
-
-### Step 2, 3, 4, 5: The `turn_away` Node
-- **Features:**
-  - Subscribes to `/obstacle` and publishes velocity commands to `/cmd_vel` (drives forward when clear, turns away when obstacle detected).
-  - Configurable parameters `forward_speed` (default 0.2 m/s) and `turn_speed` (default 0.5 rad/s) read dynamically on each scan.
-  - Publishes state on `/robot_status` (`my_robot_interfaces/msg/RobotStatus`).
-  - Services `/turn_away_enable` (`std_srvs/srv/SetBool`) and `/set_turn_speed` (`my_robot_interfaces/srv/SetTurnSpeed`).
-- **How to Run & Test:**
-  1. Terminal 1 (Start simulation with obstacle detector):
-     ```bash
-     ros2 launch diffdrive_bot control.launch.py
-     ```
-  2. Terminal 2 (Run `turn_away` node):
-     ```bash
-     ros2 run my_robot_nodes turn_away
-     ```
-  3. Terminal 3 (Control & Inspect):
-     ```bash
-     ros2 service call /turn_away_enable std_srvs/srv/SetBool "{data: true}"
-     ros2 topic echo /robot_status
-     ros2 service call /set_turn_speed my_robot_interfaces/srv/SetTurnSpeed "{turn_speed: 0.8}"
-     ros2 param set /turn_away forward_speed 0.35
-     ros2 service call /turn_away_enable std_srvs/srv/SetBool "{data: false}"
-     ```
+### Step 7: Drive in a square
+Run everything with one command:
+```bash
+ros2 launch my_robot_nodes square.launch.py side_length:=0.8
+```
 
 ---
 
-### Step 6: Action Server (`rotate_server`)
-- **Features:**
-  - Action server on `/rotate` (`my_robot_interfaces/action/Rotate`).
-  - Tracks yaw from `/odom` and accurately handles angle wrap-around at $\pm\pi$.
-  - Publishes real-time feedback and supports cancellation.
-- **How to Run & Test:**
-  1. Terminal 1 (Start simulation):
-     ```bash
-     ros2 launch diffdrive_bot gazebo.launch.py
-     ```
-  2. Terminal 2 (Start rotate action server):
-     ```bash
-     ros2 run my_robot_nodes rotate_server
-     ```
-  3. Terminal 3 (Send goal):
-     ```bash
-     ros2 action send_goal --feedback /rotate my_robot_interfaces/action/Rotate "{angle: 1.57}"
-     ```
+## What did not work and why
 
----
+1. **Anaconda Python error:**  
+   At first, `colcon build` gave an error saying `No module named 'em'`. This happened because Anaconda was active in my terminal and ROS 2 picked Anaconda's python instead of system python. Deactivating conda (`conda deactivate`) fixed it.
 
-### Step 7: Complete Square Driving (`square.launch.py`)
-- **Features:**
-  - `square_driver` coordinates `/drive_distance` and `/rotate` actions for 4 sides of length `side_length` (default 0.5 m).
-  - `square.launch.py` launches Gazebo, RViz, detector, `drive_distance_server`, `rotate_server`, and `square_driver` in a single command.
-- **How to Run:**
-  ```bash
-  ros2 launch my_robot_nodes square.launch.py side_length:=0.8
-  ```
-
----
-
-## What Did Not Work and Why (Technical Analysis)
-
-1. **Anaconda Python vs ROS 2 Interface Generator (`rosidl_adapter`):**
-   - *Problem:* When building `my_robot_interfaces`, `colcon build` initially failed with `ModuleNotFoundError: No module named 'em'`.
-   - *Cause:* The active Anaconda base environment in `$PATH` hijacked the Python interpreter during CMake generation, but lacked the ROS 2 IDL dependencies (`empy`).
-   - *Solution:* Deactivating Conda (`conda deactivate`) and enforcing the system Python interpreter via `--cmake-args -DPython3_EXECUTABLE=/usr/bin/python3` solved the build conflict.
-
-2. **Heading Angle Discontinuity across $\pm\pi$:**
-   - *Problem:* In the `/rotate` action server, subtracting the initial yaw angle from the current yaw angle caused sharp wrap-around jumps when the robot turned past the negative X-axis ($+\pi \to -\pi$).
-   - *Cause:* Quaternions converted to Euler yaw are constrained to $[-\pi, \pi]$.
-   - *Solution:* Implemented incremental difference integration (`angle_difference(current_yaw, prev_yaw)`), accumulating small delta changes between consecutive `/odom` messages to guarantee monotonic turn tracking.
+2. **Angle jumping when turning:**  
+   When writing the rotate server, subtracting the start angle from current angle caused jumps when turning past 180 degrees (because yaw jumps between +pi and -pi). To fix this, I added up small angle changes between each odometry update instead.
