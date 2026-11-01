@@ -1,7 +1,9 @@
 # Lab 1: diffdrive_bot
 
 **Name:** Bekalu Addissu
+
 **ID:** UGR/9538/16
+
 **Course:** Introduction to Robotics and Intelligent Systems  
 
 ---
