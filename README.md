@@ -8,8 +8,7 @@
 
 ---
 
-## What is in this folder
-This repository has 4 packages for Lab 1:
+## This repository has 4 packages for Lab 1:
 - `diffdrive_bot`: the robot model with the new depth camera and IMU.
 - `lab_interfaces`: base message and action types.
 - `my_robot_interfaces`: my custom msg, srv, and action files.
