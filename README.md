@@ -22,8 +22,17 @@ This repository contains the complete solution for **Lab 1: ROS 2 and Custom Rob
 
 ## Screenshots
 
-- **RViz Depth Camera Display:** `screenshots/rviz_depth_camera.png`
-- **rqt_graph Execution:** `screenshots/rqt_graph_square.png`
+### 1. Step 1: RViz Depth Camera & PointCloud2 Display
+Real simulation capture showing `/depth_camera/image` and `/depth_camera/points` with the rear depth camera visualizing the wall behind the robot:
+
+![RViz Depth Camera Display](screenshots/rviz_depth_camera.png)
+
+---
+
+### 2. Step 7: Computation Graph (`rqt_graph`) during `square.launch.py`
+Real execution capture showing active ROS 2 nodes, topics, services, and action client/server connections while the robot executes the autonomous square driving trajectory:
+
+![rqt_graph during square.launch.py](screenshots/rqt_graph_square.png)
 
 ---
 
@@ -72,10 +81,10 @@ This repository contains the complete solution for **Lab 1: ROS 2 and Custom Rob
 
 ### Step 2, 3, 4, 5: The `turn_away` Node
 - **Features:**
-  - **Step 2:** Subscribes to `/obstacle` and publishes velocity commands to `/cmd_vel` (drives forward when clear, turns away when obstacle detected).
-  - **Step 3:** Dynamic parameters `forward_speed` (default 0.2 m/s) and `turn_speed` (default 0.5 rad/s).
-  - **Step 4:** Publishes state on `/robot_status` (`my_robot_interfaces/msg/RobotStatus`).
-  - **Step 5:** Services `/turn_away_enable` (`std_srvs/srv/SetBool`) and `/set_turn_speed` (`my_robot_interfaces/srv/SetTurnSpeed`).
+  - Subscribes to `/obstacle` and publishes velocity commands to `/cmd_vel` (drives forward when clear, turns away when obstacle detected).
+  - Configurable parameters `forward_speed` (default 0.2 m/s) and `turn_speed` (default 0.5 rad/s) read dynamically on each scan.
+  - Publishes state on `/robot_status` (`my_robot_interfaces/msg/RobotStatus`).
+  - Services `/turn_away_enable` (`std_srvs/srv/SetBool`) and `/set_turn_speed` (`my_robot_interfaces/srv/SetTurnSpeed`).
 - **How to Run & Test:**
   1. Terminal 1 (Start simulation with obstacle detector):
      ```bash
@@ -119,7 +128,7 @@ This repository contains the complete solution for **Lab 1: ROS 2 and Custom Rob
 
 ### Step 7: Complete Square Driving (`square.launch.py`)
 - **Features:**
-  - `square_driver` acts as an action client to `/drive_distance` and `/rotate`, executing 4 sides of length `side_length` (default 0.5 m) separated by 90-degree left turns.
+  - `square_driver` coordinates `/drive_distance` and `/rotate` actions for 4 sides of length `side_length` (default 0.5 m).
   - `square.launch.py` launches Gazebo, RViz, detector, `drive_distance_server`, `rotate_server`, and `square_driver` in a single command.
 - **How to Run:**
   ```bash
