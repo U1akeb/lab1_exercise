@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Node that drives the robot forward and turns away from obstacles.
-Supports parameters, status reporting, enabling/disabling service, and speed configuration."""
+"""Autonomous obstacle avoidance controller for diffdrive_bot.
+Drives forward when the path is clear, turns away from obstacles, and supports
+runtime parameter tuning and service-based enabling/disabling."""
 
 import rclpy
 from geometry_msgs.msg import Twist
@@ -19,34 +20,34 @@ class TurnAway(Node):
     def __init__(self):
         super().__init__("turn_away")
 
-        # Step 3 & 5: Declare parameters
+        # Declare configurable parameters
         self.declare_parameter("forward_speed", 0.2)
         self.declare_parameter("turn_speed", 0.5)
         self.declare_parameter("max_turn_speed", 1.5)
 
-        # Step 5: Node starts switched off
+        # Starts disabled until /turn_away_enable service is called
         self.enabled = False
 
-        # Step 2 & 4: Publishers and Subscribers
+        # Publishers and subscribers
         self.cmd_vel_pub = self.create_publisher(Twist, "cmd_vel", 10)
         self.status_pub = self.create_publisher(RobotStatus, "robot_status", 10)
         self.create_subscription(ObstacleInfo, "obstacle", self.on_obstacle, 10)
 
-        # Step 5: Services
+        # Service servers
         self.create_service(SetBool, "turn_away_enable", self.on_enable)
         self.create_service(SetTurnSpeed, "set_turn_speed", self.on_set_turn_speed)
 
-        self.get_logger().info("turn_away node initialized (disabled by default)")
+        self.get_logger().info("turn_away controller initialized (disabled by default)")
 
     def on_obstacle(self, msg: ObstacleInfo):
-        # Step 3: Read parameters each time a message arrives so changes take effect immediately
+        # Read parameters dynamically each callback so parameter changes take immediate effect
         forward_speed = float(self.get_parameter("forward_speed").value)
         turn_speed = float(self.get_parameter("turn_speed").value)
 
         status_msg = RobotStatus()
         status_msg.obstacle_distance = float(msg.distance)
 
-        # Step 5: While switched off, state is "stopped" and publish no velocities
+        # While switched off, publish state as stopped and send no movement commands
         if not self.enabled:
             status_msg.state = "stopped"
             self.status_pub.publish(status_msg)
@@ -54,15 +55,15 @@ class TurnAway(Node):
 
         twist = Twist()
         if not msg.too_close:
-            # Step 2: Drive forward
+            # Clear forward path
             status_msg.state = "forward"
             twist.linear.x = forward_speed
             twist.angular.z = 0.0
         else:
-            # Step 2: Turn on the spot away from the obstacle
+            # Obstacle too close: turn on the spot away from it
             status_msg.state = "turning"
             twist.linear.x = 0.0
-            # angle is positive when the obstacle is to the left, so turn right (negative angular.z)
+            # Positive angle means obstacle is to the left, so turn right (negative angular.z)
             if msg.angle > 0.0:
                 twist.angular.z = -turn_speed
             else:
@@ -75,13 +76,13 @@ class TurnAway(Node):
         if request.data:
             self.enabled = True
             response.success = True
-            response.message = "turn_away enabled"
+            response.message = "turn_away controller enabled"
         else:
             self.enabled = False
-            # Step 5: Publish one zero velocity when switched off
+            # Send a zero velocity twist to ensure the robot stops immediately
             self.cmd_vel_pub.publish(Twist())
             response.success = True
-            response.message = "turn_away disabled and stopped"
+            response.message = "turn_away controller disabled and stopped"
 
         self.get_logger().info(response.message)
         return response
@@ -96,7 +97,7 @@ class TurnAway(Node):
         else:
             self.set_parameters([Parameter("turn_speed", value=float(request.turn_speed))])
             response.success = True
-            response.message = f"turn_speed set to {request.turn_speed:.2f} rad/s"
+            response.message = f"turn_speed updated to {request.turn_speed:.2f} rad/s"
 
         self.get_logger().info(response.message)
         return response
